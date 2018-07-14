@@ -13,7 +13,8 @@ from keras.datasets import mnist
 from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
 from keras.utils import np_utils
-
+import collections
+PLabel = collections.namedtuple('Label', ['class_label', 'probability'], verbose=True)
 
 def run():
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -60,13 +61,14 @@ def run():
 
     # training the model and saving metrics in history
     history = model.fit(X_train, Y_train,
-                        batch_size=128, epochs=8,
+                        batch_size=128, epochs=2,
                         verbose=2,
                         validation_data=(X_test, Y_test))
 
     predict = model.predict_proba(X_test)
-    class_proba = [(np.argmax(x) , max(x)) for x in predict]
-    class_proba=class_proba.sort(key=1)
+    class_proba = [(max(x),np.argmax(x)) for x in predict]#.sort()
+    pseudo_labels = [p for p in class_proba[0:] if p[0] > .9 ]
+    print ( 'from {} unlabeld samples {} become pseudo labels '.format(len(X_test), len(pseudo_labels)))
 
     plot_results(history)
 
