@@ -1,4 +1,5 @@
 # imports for array-handling and plotting
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -50,7 +51,7 @@ def run():
     print("Shape after one-hot encoding: ", Y_train.shape)
 
     # split train to labeled & unlabeld
-    labeled_size = .20
+    labeled_size = .10
     X_labeled, X_unlabeled, Y_labeled, Y_unlabeled = train_test_split(X_train, Y_train,
                                                                       train_size=labeled_size, stratify=y_train)
     print("X_labeled shape", X_labeled.shape)
@@ -67,19 +68,21 @@ def run():
                         verbose=2,
                         validation_data=(X_test, Y_test))
 
+    # check accuracy on test data
+    metrics = model.evaluate(X_test, y=Y_test, batch_size=128)
+    for i in range(len(model.metrics_names)):
+        print(str(model.metrics_names[i]) + ": " + str(metrics[i]))
 
     # use the model to predict unlabeled data and create pseudo labeles
-    predict = model.predict_proba(X_unlabeled)
-
-    # reverse one hot encoding to classes
-    class_proba = [(max(x),np.argmax(x)) for x in predict] #.sort(reverse=True)
-    class_proba.sort(reverse=True)
     threshold = .999
-    pseudo_labels = [p for p in class_proba[0:] if p[0] > threshold ]
-    print ('using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
-           format(threshold, len(pseudo_labels), len(X_unlabeled)))
+    predict = np.argmax(model.predict_proba(X_unlabeled),axis=1)
+    # select unlabeled samples with predictions probabilty above threshold :
+    pseudo_X_train = X_unlabeled[predict > threshold]
+    pseudo_Y_train = Y_unlabeled[predict > threshold]
 
-    #plot_results(history)
+    print ('using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
+           format(threshold, len(pseudo_X_train), len(X_unlabeled)))
+
 
 
 def build_model():
@@ -102,28 +105,6 @@ def build_model():
     return model
 
 
-def create_augmented_train(X, y):
-      '''
-      Create and return the augmented_train set that consists
-      of pseudo-labeled and labeled data.
-      '''
-      num_of_samples = int(len(self.unlabled_data) * self.sample_rate)
-
-      # Train the model and creat the pseudo-labels
-      self.model.fit(X, y)
-      pseudo_labels = self.model.predict(self.unlabled_data[self.features])
-
-      # Add the pseudo-labels to the test set
-      pseudo_data = self.unlabled_data.copy(deep=True)
-      pseudo_data[self.target] = pseudo_labels
-
-      # Take a subset of the test set with pseudo-labels and append in onto
-      # the training set
-      sampled_pseudo_data = pseudo_data.sample(n=num_of_samples)
-      temp_train = pd.concat([X, y], axis=1)
-      augemented_train = pd.concat([sampled_pseudo_data, temp_train])
-
-      return shuffle(augemented_train)
 
 def plot_digits(X_train, y_train):
     fig = plt.figure()
