@@ -1,6 +1,8 @@
 # imports for array-handling and plotting
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 # keep our keras backend tensorflow quiet
 import os
@@ -14,9 +16,10 @@ from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
 from keras.utils import np_utils
 import collections
-PLabel = collections.namedtuple('Label', ['class_label', 'probability'], verbose=True)
+#PLabel = collections.namedtuple('Label', ['class_label', 'probability'], verbose=True)
 
 def run():
+    # load mnist train & test
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
     # print the shape before we reshape and normalize
@@ -24,16 +27,6 @@ def run():
     print("y_train shape", y_train.shape)
     print("X_test shape", X_test.shape)
     print("y_test shape", y_test.shape)
-
-    fig = plt.figure()
-    for i in range(9):
-        plt.subplot(3,3,i+1)
-        plt.tight_layout()
-        plt.imshow(X_train[i], cmap='gray', interpolation='none')
-    plt.title("Class {}".format(y_train[i]))
-    plt.xticks([])
-    plt.yticks([])
-    fig
 
     # building the input vector from the 28x28 pixels
     X_train = X_train.reshape(60000, 784)
@@ -56,21 +49,37 @@ def run():
     Y_test = np_utils.to_categorical(y_test, n_classes)
     print("Shape after one-hot encoding: ", Y_train.shape)
 
+    # split train to labeled & unlabeld
+    labeled_size = .20
+    X_labeled, X_unlabeled, Y_labeled, Y_unlabeled = train_test_split(X_train, Y_train,
+                                                                      train_size=labeled_size, stratify=y_train)
+    print("X_labeled shape", X_labeled.shape)
+    print("Y_labeled shape", Y_labeled.shape)
+    print("X_unlabeled shape", X_unlabeled.shape)
+    print("Y_unlabeled shape", Y_unlabeled.shape)
+
     # build model :
     model = build_model()
 
-    # training the model and saving metrics in history
-    history = model.fit(X_train, Y_train,
-                        batch_size=128, epochs=2,
+    # training the model on the labeled data and saving metrics in history
+    history = model.fit(X_labeled, Y_labeled,
+                        batch_size=128, epochs=4,
                         verbose=2,
                         validation_data=(X_test, Y_test))
 
-    predict = model.predict_proba(X_test)
-    class_proba = [(max(x),np.argmax(x)) for x in predict]#.sort()
-    pseudo_labels = [p for p in class_proba[0:] if p[0] > .9 ]
-    print ( 'from {} unlabeld samples {} become pseudo labels '.format(len(X_test), len(pseudo_labels)))
 
-    plot_results(history)
+    # use the model to predict unlabeled data and create pseudo labeles
+    predict = model.predict_proba(X_unlabeled)
+
+    # reverse one hot encoding to classes
+    class_proba = [(max(x),np.argmax(x)) for x in predict] #.sort(reverse=True)
+    class_proba.sort(reverse=True)
+    threshold = .999
+    pseudo_labels = [p for p in class_proba[0:] if p[0] > threshold ]
+    print ('using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
+           format(threshold, len(pseudo_labels), len(X_unlabeled)))
+
+    #plot_results(history)
 
 
 def build_model():
@@ -115,6 +124,17 @@ def create_augmented_train(X, y):
       augemented_train = pd.concat([sampled_pseudo_data, temp_train])
 
       return shuffle(augemented_train)
+
+def plot_digits(X_train, y_train):
+    fig = plt.figure()
+    for i in range(9):
+        plt.subplot(3,3,i+1)
+        plt.tight_layout()
+        plt.imshow(X_train[i], cmap='gray', interpolation='none')
+    plt.title("Class {}".format(y_train[i]))
+    plt.xticks([])
+    plt.yticks([])
+    fig
 
 
 def plot_results(model):
