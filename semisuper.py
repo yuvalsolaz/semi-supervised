@@ -62,6 +62,8 @@ def run():
     # build model :
     model = build_model()
 
+    # loop few iteration :
+    i = 0
     # training the model on the labeled data and saving metrics in history
     history = model.fit(X_labeled, Y_labeled,
                         batch_size=128, epochs=4,
@@ -77,11 +79,27 @@ def run():
     threshold = .999
     predict = np.argmax(model.predict_proba(X_unlabeled),axis=1)
     # select unlabeled samples with predictions probabilty above threshold :
-    pseudo_X_train = X_unlabeled[predict > threshold]
-    pseudo_Y_train = Y_unlabeled[predict > threshold]
+    X_pseudo_labeled = X_unlabeled[predict > threshold]
+    Y_pseudo_labeled = Y_unlabeled[predict > threshold]
 
     print ('using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
-           format(threshold, len(pseudo_X_train), len(X_unlabeled)))
+           format(threshold, len(X_pseudo_labeled), len(X_unlabeled)))
+
+    # add pseudo labeled samples to labeled data :
+    X_mixed_labeled = np.concatenate((X_labeled, X_pseudo_labeled ), axis=0)
+    Y_mixed_labeled = np.concatenate((Y_labeled, Y_pseudo_labeled ), axis=0)
+
+    # training the model on the pseudo labeled data and saving metrics in history
+    history = model.fit(X_mixed_labeled, Y_mixed_labeled,
+                        batch_size=128, epochs=4,
+                        verbose=2,
+                        validation_data=(X_test, Y_test))
+
+    # check accuracy on test data
+    metrics = model.evaluate(X_test, y=Y_test, batch_size=128)
+    print('accuracy after {} iteration :'.format(i))
+    for i in range(len(model.metrics_names)):
+        print(str(model.metrics_names[i]) + ": " + str(metrics[i]))
 
 
 
