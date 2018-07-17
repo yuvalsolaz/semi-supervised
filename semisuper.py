@@ -8,16 +8,12 @@ from sklearn.model_selection import train_test_split
 # keep our keras backend tensorflow quiet
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
-# for testing on CPU
-#os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # keras imports for the dataset and building our neural network
 from keras.datasets import mnist
 from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
 from keras.utils import np_utils
-import collections
-#PLabel = collections.namedtuple('Label', ['class_label', 'probability'], verbose=True)
 
 def run():
     # load mnist train & test
@@ -51,7 +47,7 @@ def run():
     print("Shape after one-hot encoding: ", Y_train.shape)
 
     # split train to labeled & unlabeld
-    labeled_size = .10
+    labeled_size = .05
     X_labeled, X_unlabeled, Y_labeled, Y_unlabeled = train_test_split(X_train, Y_train,
                                                                       train_size=labeled_size, stratify=y_train)
     print("X_labeled shape", X_labeled.shape)
@@ -63,7 +59,7 @@ def run():
     model = build_model()
 
     # loop few iteration :
-    i = 0
+    iteration = 0
     # training the model on the labeled data and saving metrics in history
     history = model.fit(X_labeled, Y_labeled,
                         batch_size=128, epochs=4,
@@ -72,9 +68,13 @@ def run():
 
     # check accuracy on test data
     metrics = model.evaluate(X_test, y=Y_test, batch_size=128)
+
+    print('\n accuracy after {} iterations :'.format(iteration))
+
     for i in range(len(model.metrics_names)):
         print(str(model.metrics_names[i]) + ": " + str(metrics[i]))
 
+    iteration = iteration+1
     # use the model to predict unlabeled data and create pseudo labeles
     threshold = .999
     predict = np.argmax(model.predict_proba(X_unlabeled),axis=1)
@@ -82,7 +82,7 @@ def run():
     X_pseudo_labeled = X_unlabeled[predict > threshold]
     Y_pseudo_labeled = Y_unlabeled[predict > threshold]
 
-    print ('using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
+    print ('\n using threshold of {} - predicts {} pseudo labels from {} unlabeld samples'. \
            format(threshold, len(X_pseudo_labeled), len(X_unlabeled)))
 
     # add pseudo labeled samples to labeled data :
@@ -97,10 +97,10 @@ def run():
 
     # check accuracy on test data
     metrics = model.evaluate(X_test, y=Y_test, batch_size=128)
-    print('accuracy after {} iteration :'.format(i))
+    print('\n accuracy after {} iterations :'.format(iteration))
     for i in range(len(model.metrics_names)):
         print(str(model.metrics_names[i]) + ": " + str(metrics[i]))
-
+    print('\n')
 
 
 def build_model():
@@ -110,9 +110,9 @@ def build_model():
     model.add(Activation('relu'))
     model.add(Dropout(0.2))
 
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(Dropout(0.2))
+##    model.add(Dense(512))
+##    model.add(Activation('relu'))
+##    model.add(Dropout(0.2))
 
     model.add(Dense(10))
     model.add(Activation('softmax'))
