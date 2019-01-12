@@ -227,6 +227,7 @@ predict_proba = model.predict_proba(X_unlabeled)
 pseudo_index = np.max(predict_proba,axis=1) > threshold 
 mlflow.log_param('threshold',threshold)   
 print (f'\n using threshold of {threshold} - predicts {pseudo_index[pseudo_index].shape} pseudo labels from {pseudo_index.shape} unlabeld samples')
+mlflow.log_param("pseudo labels", pseudo_index[pseudo_index].shape)
 
 predict = model.predict(X_unlabeled)
 X_pseudo_labeled = X_unlabeled[pseudo_index]
