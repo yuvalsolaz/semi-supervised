@@ -219,7 +219,7 @@ plot_digits(X_test.reshape(X_test.shape[0],28,28),y_test)
 
 iteration = iteration+1
 
-threshold = .98
+threshold = .99
 predict_proba = model.predict_proba(X_unlabeled)
 
 # select unlabeled samples with predictions probabilty above threshold :
